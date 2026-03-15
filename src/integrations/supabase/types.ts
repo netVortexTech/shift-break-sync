@@ -14,7 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      employees: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      lunch_requests: {
+        Row: {
+          created_at: string
+          date: string
+          employee_name: string
+          id: string
+          lunch_time: string
+          shift: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          employee_name: string
+          id?: string
+          lunch_time: string
+          shift: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          employee_name?: string
+          id?: string
+          lunch_time?: string
+          shift?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
