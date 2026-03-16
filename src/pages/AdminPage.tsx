@@ -1,4 +1,5 @@
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { ShiftSelector } from '@/components/ShiftSelector';
 import { PendingRequests } from '@/components/PendingRequests';
 import { ScheduleView } from '@/components/ScheduleView';
@@ -7,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
+import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
   const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId } = useApp();
+  const { signOut } = useAuth();
   const [sheetInput, setSheetInput] = useState(spreadsheetId);
 
   useEffect(() => { setSheetInput(spreadsheetId); }, [spreadsheetId]);
@@ -48,15 +50,26 @@ export default function AdminPage() {
                 Manage lunch schedules • {SHIFTS[activeShift].label}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10"
-              onClick={handleCopyLink}
-            >
-              <LinkIcon className="w-4 h-4 mr-2" />
-              Copy Employee Link
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10"
+                onClick={handleCopyLink}
+              >
+                <LinkIcon className="w-4 h-4 mr-2" />
+                Copy Employee Link
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10"
+                onClick={() => signOut()}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>
