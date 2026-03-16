@@ -13,6 +13,8 @@ interface AppState {
   getSlotCount: (lunchTime: string) => number;
   employees: string[];
   loading: boolean;
+  spreadsheetId: string;
+  setSpreadsheetId: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
