@@ -1,4 +1,5 @@
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { ShiftSelector } from '@/components/ShiftSelector';
 import { PendingRequests } from '@/components/PendingRequests';
 import { ScheduleView } from '@/components/ScheduleView';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
+import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
