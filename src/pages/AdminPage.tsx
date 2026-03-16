@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
   const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId } = useApp();
   const [sheetInput, setSheetInput] = useState(spreadsheetId);
+
+  useEffect(() => { setSheetInput(spreadsheetId); }, [spreadsheetId]);
   const today = new Date().toISOString().split('T')[0];
 
   const todayRequests = requests.filter(r => r.date === today && r.shift === activeShift);
