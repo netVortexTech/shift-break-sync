@@ -128,6 +128,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const approveRequest = useCallback(async (id: string) => {
     await supabase.from('lunch_requests').update({ status: 'approved' }).eq('id', id);
+
+    // Sync to Google Sheets if configured
+    if (spreadsheetId) {
+      const req = requests.find(r => r.id === id);
+      if (req) {
+        try {
+          await supabase.functions.invoke('sync-to-sheets', {
+            body: {
+              spreadsheetId,
+              rows: [[req.date, req.shift, req.employeeName, req.lunchTime, 'approved', new Date().toISOString()]],
+            },
+          });
+        } catch (e) {
+          console.error('Failed to sync to sheets:', e);
+        }
+      }
+    }
+  }, [spreadsheetId, requests]);
+
+  const setSpreadsheetId = useCallback(async (id: string) => {
+    setSpreadsheetIdLocal(id);
+    await supabase.from('app_settings').upsert({ key: 'spreadsheet_id', value: id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   }, []);
 
   const rejectRequest = useCallback(async (id: string) => {
