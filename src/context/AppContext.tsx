@@ -175,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       requests, addRequest, approveRequest, rejectRequest,
       resetSchedule, getSlotCount,
       employees, loading,
+      spreadsheetId, setSpreadsheetId,
     }}>
       {children}
     </AppContext.Provider>
