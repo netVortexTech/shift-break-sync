@@ -122,7 +122,7 @@ export default function AdminPage() {
           </div>
         </motion.div>
 
-          {/* Pending Requests */}
+          <div className="grid lg:grid-cols-2 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
