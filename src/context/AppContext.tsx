@@ -41,6 +41,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data) setActiveShiftLocal(data.value as ShiftName);
     });
 
+    supabase.from('app_settings').select('value').eq('key', 'spreadsheet_id').single().then(({ data }) => {
+      if (data) setSpreadsheetIdLocal(data.value);
+    });
+
     // Real-time for shift changes
     const channel = supabase.channel('settings-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload) => {
