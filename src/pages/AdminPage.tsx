@@ -11,7 +11,8 @@ import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, File
 import { useState } from 'react';
 
 export default function AdminPage() {
-  const { activeShift, resetSchedule, requests } = useApp();
+  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId } = useApp();
+  const [sheetInput, setSheetInput] = useState(spreadsheetId);
   const today = new Date().toISOString().split('T')[0];
 
   const todayRequests = requests.filter(r => r.date === today && r.shift === activeShift);
