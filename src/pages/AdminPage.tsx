@@ -4,12 +4,17 @@ import { PendingRequests } from '@/components/PendingRequests';
 import { ScheduleView } from '@/components/ScheduleView';
 import { SHIFTS } from '@/lib/shifts';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon } from 'lucide-react';
+import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
-  const { activeShift, resetSchedule, requests } = useApp();
+  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId } = useApp();
+  const [sheetInput, setSheetInput] = useState(spreadsheetId);
+
+  useEffect(() => { setSheetInput(spreadsheetId); }, [spreadsheetId]);
   const today = new Date().toISOString().split('T')[0];
 
   const todayRequests = requests.filter(r => r.date === today && r.shift === activeShift);
@@ -87,8 +92,39 @@ export default function AdminPage() {
           ))}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Pending Requests */}
+        {/* Google Sheets Config */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card rounded-2xl border p-5 shadow-sm mb-6"
+        >
+          <h2 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-primary" />
+            Google Sheets Sync
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Paste the Spreadsheet ID to auto-sync approved requests. The sheet must be publicly editable.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Spreadsheet ID (from the URL)"
+              value={sheetInput}
+              onChange={e => setSheetInput(e.target.value)}
+              className="text-sm"
+            />
+            <Button
+              size="sm"
+              onClick={() => {
+                setSpreadsheetId(sheetInput);
+                toast.success('Spreadsheet ID saved!');
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </motion.div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
