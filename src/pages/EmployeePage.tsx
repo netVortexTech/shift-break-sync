@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { UtensilsCrossed, CalendarCheck, Send } from 'lucide-react';
+import { UtensilsCrossed, CalendarCheck, Send, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function EmployeePage() {
   const { employees, activeShift, addRequest, requests } = useApp();
