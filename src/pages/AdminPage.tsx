@@ -70,6 +70,7 @@ export default function AdminPage() {
                 Sign Out
               </Button>
             </div>
+          </div>
         </div>
       </header>
 
