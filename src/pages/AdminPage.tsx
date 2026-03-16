@@ -90,7 +90,38 @@ export default function AdminPage() {
           ))}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* Google Sheets Config */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card rounded-2xl border p-5 shadow-sm mb-6"
+        >
+          <h2 className="font-heading font-semibold text-lg mb-3 flex items-center gap-2">
+            <FileSpreadsheet className="w-5 h-5 text-primary" />
+            Google Sheets Sync
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Paste the Spreadsheet ID to auto-sync approved requests. The sheet must be publicly editable.
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Spreadsheet ID (from the URL)"
+              value={sheetInput}
+              onChange={e => setSheetInput(e.target.value)}
+              className="text-sm"
+            />
+            <Button
+              size="sm"
+              onClick={() => {
+                setSpreadsheetId(sheetInput);
+                toast.success('Spreadsheet ID saved!');
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </motion.div>
+
           {/* Pending Requests */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
