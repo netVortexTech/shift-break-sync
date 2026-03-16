@@ -50,16 +50,26 @@ export default function AdminPage() {
                 Manage lunch schedules • {SHIFTS[activeShift].label}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10"
-              onClick={handleCopyLink}
-            >
-              <LinkIcon className="w-4 h-4 mr-2" />
-              Copy Employee Link
-            </Button>
-          </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10"
+                onClick={handleCopyLink}
+              >
+                <LinkIcon className="w-4 h-4 mr-2" />
+                Copy Employee Link
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10"
+                onClick={() => signOut()}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
         </div>
       </header>
 
