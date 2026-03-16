@@ -24,6 +24,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [requests, setRequests] = useState<LunchRequest[]>([]);
   const [employees, setEmployees] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [spreadsheetId, setSpreadsheetIdLocal] = useState('');
 
   const today = new Date().toISOString().split('T')[0];
 
