@@ -39,14 +39,23 @@ export default function EmployeePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-header text-header-foreground py-6 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <UtensilsCrossed className="w-6 h-6" />
-            <h1 className="font-heading text-2xl font-bold">Lunch Break Scheduler</h1>
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <UtensilsCrossed className="w-6 h-6" />
+              <h1 className="font-heading text-2xl font-bold">Lunch Break Scheduler</h1>
+            </div>
+            <p className="text-header-foreground/70 text-sm">
+              {SHIFTS[activeShift].label} • Select your name and choose a lunch slot
+            </p>
           </div>
-          <p className="text-header-foreground/70 text-sm">
-            {SHIFTS[activeShift].label} • Select your name and choose a lunch slot
-          </p>
+          <Link
+            to="/admin"
+            className="flex items-center gap-2 text-sm border border-header-foreground/30 rounded-lg px-3 py-2 hover:bg-header-foreground/10 transition-colors"
+          >
+            <Shield className="w-4 h-4" />
+            Admin
+          </Link>
         </div>
       </header>
 
