@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
   const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId } = useApp();
+  const { signOut } = useAuth();
   const [sheetInput, setSheetInput] = useState(spreadsheetId);
 
   useEffect(() => { setSheetInput(spreadsheetId); }, [spreadsheetId]);
