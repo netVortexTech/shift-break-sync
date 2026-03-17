@@ -3,16 +3,17 @@ import { useAuth } from '@/context/AuthContext';
 import { ShiftSelector } from '@/components/ShiftSelector';
 import { PendingRequests } from '@/components/PendingRequests';
 import { ScheduleView } from '@/components/ScheduleView';
+import { EmployeeManager } from '@/components/EmployeeManager';
 import { SHIFTS } from '@/lib/shifts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut } from 'lucide-react';
+import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut, CheckCheck, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
-  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId } = useApp();
+  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove } = useApp();
   const { signOut } = useAuth();
   const [sheetInput, setSheetInput] = useState(spreadsheetId);
 
@@ -28,6 +29,15 @@ export default function AdminPage() {
       resetSchedule();
       toast.success('Schedule has been reset');
     }
+  };
+
+  const handleBulkApprove = async () => {
+    if (pendingCount === 0) {
+      toast.info('No pending requests to approve');
+      return;
+    }
+    await bulkApprove();
+    toast.success(`Approved ${pendingCount} request${pendingCount > 1 ? 's' : ''}`);
   };
 
   const handleCopyLink = () => {
@@ -78,10 +88,16 @@ export default function AdminPage() {
         {/* Shift Control */}
         <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
           <ShiftSelector />
-          <Button variant="destructive" size="sm" onClick={handleReset} className="gap-2">
-            <RotateCcw className="w-4 h-4" />
-            Reset Today's Schedule
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleBulkApprove} className="gap-2" disabled={pendingCount === 0}>
+              <CheckCheck className="w-4 h-4" />
+              Approve All ({pendingCount})
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleReset} className="gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Reset Today
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -116,7 +132,7 @@ export default function AdminPage() {
             Google Sheets Sync
           </h2>
           <p className="text-xs text-muted-foreground mb-3">
-            Paste the Spreadsheet ID to auto-sync approved requests. The sheet must be publicly editable.
+            Paste the Spreadsheet ID to auto-sync approved requests. The sheet must be shared with the service account.
           </p>
           <div className="flex gap-2">
             <Input
@@ -137,7 +153,7 @@ export default function AdminPage() {
           </div>
         </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-6 mb-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -169,6 +185,20 @@ export default function AdminPage() {
             <ScheduleView />
           </motion.div>
         </div>
+
+        {/* Employee Management */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-card rounded-2xl border p-5 shadow-sm"
+        >
+          <h2 className="font-heading font-semibold text-lg mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            Manage Employees
+          </h2>
+          <EmployeeManager />
+        </motion.div>
       </div>
     </div>
   );
