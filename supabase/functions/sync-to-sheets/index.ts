@@ -59,6 +59,95 @@ async function getAccessToken(serviceAccount: { client_email: string; private_ke
   return tokenData.access_token as string;
 }
 
+async function generateScheduleView(spreadsheetId: string, accessToken: string) {
+  // 1. GET RAW DATA
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/RAW_DATA!A:F`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  const data = await res.json();
+  const rows = data.values || [];
+
+  const records = rows.slice(1); // remove header
+
+  const grouped: any = {
+    morning: {},
+    afternoon: {},
+    night: {},
+  };
+
+  // 2. GROUP DATA
+  records.forEach((row: string[]) => {
+    const rawShift = row[1];
+
+    let shift = "";
+
+if (rawShift.toLowerCase().includes("morning")) {
+  shift = "morning";
+} else if (rawShift.toLowerCase().includes("afternoon")) {
+  shift = "afternoon";
+} else if (rawShift.toLowerCase().includes("night")) {
+  shift = "night";
+}
+    const name = row[2];
+    const time = row[3];
+
+    if (!grouped[shift]) return;
+
+    if (!grouped[shift][time]) {
+      grouped[shift][time] = [];
+    }
+
+    grouped[shift][time].push(name);
+  });
+
+  // 3. FORMAT FUNCTION
+  function formatShift(title: string, shiftData: any) {
+    const output: any[] = [];
+
+    output.push([title]);
+    output.push(["Time slot", "Agent 1", "Agent 2", "Agent 3"]);
+
+    Object.keys(shiftData)
+      .sort()
+      .forEach((time) => {
+        const agents = shiftData[time];
+
+        output.push([
+          time,
+          agents[0] || "",
+          agents[1] || "",
+          agents[2] || "",
+        ]);
+      });
+
+    output.push([""]);
+    return output;
+  }
+
+  const finalData = [
+    ...formatShift("Morning Shift", grouped.morning),
+    ...formatShift("Afternoon Shift", grouped.afternoon),
+    ...formatShift("Night Shift", grouped.night),
+  ];
+
+  // 4. WRITE TO FORMATTED SHEET
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/March 17!A1?valueInputOption=RAW`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ values: finalData }),
+    }
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -84,7 +173,7 @@ Deno.serve(async (req) => {
     }
 
     // Append rows to the sheet
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A:F:append?valueInputOption=USER_ENTERED`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/RAW_DATA!A:F:append?valueInputOption=USER_ENTERED`;
 
     const response = await fetch(url, {
       method: 'POST',
@@ -97,6 +186,8 @@ Deno.serve(async (req) => {
 
     const data = await response.json();
 
+    await generateScheduleView(spreadsheetId, accessToken);
+    
     if (!response.ok) {
       throw new Error(`Google Sheets API error [${response.status}]: ${JSON.stringify(data)}`);
     }
