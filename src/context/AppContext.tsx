@@ -9,9 +9,13 @@ interface AppState {
   addRequest: (employeeName: string, lunchTime: string) => Promise<void>;
   approveRequest: (id: string) => Promise<void>;
   rejectRequest: (id: string) => Promise<void>;
+  bulkApprove: () => Promise<void>;
   resetSchedule: () => Promise<void>;
   getSlotCount: (lunchTime: string) => number;
   employees: string[];
+  addEmployee: (name: string) => Promise<void>;
+  updateEmployee: (oldName: string, newName: string) => Promise<void>;
+  deleteEmployee: (name: string) => Promise<void>;
   loading: boolean;
   spreadsheetId: string;
   setSpreadsheetId: (id: string) => Promise<void>;
@@ -30,9 +34,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Load employees
   useEffect(() => {
-    supabase.from('employees').select('name').order('name').then(({ data }) => {
-      if (data) setEmployees(data.map(e => e.name));
-    });
+    const loadEmployees = () => {
+      supabase.from('employees').select('name').order('name').then(({ data }) => {
+        if (data) setEmployees(data.map(e => e.name));
+      });
+    };
+    loadEmployees();
+
+    const channel = supabase.channel('employees-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, () => {
+        loadEmployees();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   // Load active shift
@@ -45,7 +60,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data) setSpreadsheetIdLocal(data.value);
     });
 
-    // Real-time for shift changes
     const channel = supabase.channel('settings-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload) => {
         const row = payload.new as any;
@@ -76,7 +90,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    // Real-time for request changes
     const channel = supabase.channel('requests-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'lunch_requests' }, (payload) => {
         const r = payload.new as any;
@@ -126,31 +139,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [activeShift, today]);
 
+  const getResolvedSheetId = useCallback(() => {
+    let sheetId = spreadsheetId;
+    const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match) sheetId = match[1];
+    return sheetId;
+  }, [spreadsheetId]);
+
+  const syncToSheets = useCallback(async (rows: string[][]) => {
+    if (!spreadsheetId) return;
+    const sheetId = getResolvedSheetId();
+    try {
+      await supabase.functions.invoke('sync-to-sheets', {
+        body: { spreadsheetId: sheetId, rows },
+      });
+    } catch (e) {
+      console.error('Failed to sync to sheets:', e);
+    }
+  }, [spreadsheetId, getResolvedSheetId]);
+
   const approveRequest = useCallback(async (id: string) => {
     await supabase.from('lunch_requests').update({ status: 'approved' }).eq('id', id);
 
-    // Sync to Google Sheets if configured
     if (spreadsheetId) {
       const req = requests.find(r => r.id === id);
       if (req) {
-        // Extract just the spreadsheet ID if a full URL was pasted
-        let sheetId = spreadsheetId;
-        const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-        if (match) sheetId = match[1];
-
-        try {
-          await supabase.functions.invoke('sync-to-sheets', {
-            body: {
-              spreadsheetId: sheetId,
-              rows: [[req.date, req.shift, req.employeeName, req.lunchTime, 'approved', new Date().toISOString()]],
-            },
-          });
-        } catch (e) {
-          console.error('Failed to sync to sheets:', e);
-        }
+        await syncToSheets([[req.date, req.shift, req.employeeName, req.lunchTime, 'approved', new Date().toISOString()]]);
       }
     }
-  }, [spreadsheetId, requests]);
+  }, [spreadsheetId, requests, syncToSheets]);
+
+  const bulkApprove = useCallback(async () => {
+    const pending = requests.filter(r => r.status === 'pending' && r.shift === activeShift && r.date === today);
+    if (pending.length === 0) return;
+
+    const ids = pending.map(r => r.id);
+    await supabase.from('lunch_requests').update({ status: 'approved' }).in('id', ids);
+
+    if (spreadsheetId) {
+      const rows = pending.map(r => [r.date, r.shift, r.employeeName, r.lunchTime, 'approved', new Date().toISOString()]);
+      await syncToSheets(rows);
+    }
+  }, [requests, activeShift, today, spreadsheetId, syncToSheets]);
 
   const setSpreadsheetId = useCallback(async (id: string) => {
     setSpreadsheetIdLocal(id);
@@ -174,12 +204,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ).length;
   }, [requests, activeShift, today]);
 
+  // Employee CRUD
+  const addEmployee = useCallback(async (name: string) => {
+    await supabase.from('employees').insert({ name });
+  }, []);
+
+  const updateEmployee = useCallback(async (oldName: string, newName: string) => {
+    await supabase.from('employees').update({ name: newName }).eq('name', oldName);
+  }, []);
+
+  const deleteEmployee = useCallback(async (name: string) => {
+    await supabase.from('employees').delete().eq('name', name);
+  }, []);
+
   return (
     <AppContext.Provider value={{
       activeShift, setActiveShift,
-      requests, addRequest, approveRequest, rejectRequest,
+      requests, addRequest, approveRequest, rejectRequest, bulkApprove,
       resetSchedule, getSlotCount,
-      employees, loading,
+      employees, addEmployee, updateEmployee, deleteEmployee,
+      loading,
       spreadsheetId, setSpreadsheetId,
     }}>
       {children}
