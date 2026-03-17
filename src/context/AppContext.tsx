@@ -133,10 +133,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (spreadsheetId) {
       const req = requests.find(r => r.id === id);
       if (req) {
+        // Extract just the spreadsheet ID if a full URL was pasted
+        let sheetId = spreadsheetId;
+        const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+        if (match) sheetId = match[1];
+
         try {
           await supabase.functions.invoke('sync-to-sheets', {
             body: {
-              spreadsheetId,
+              spreadsheetId: sheetId,
               rows: [[req.date, req.shift, req.employeeName, req.lunchTime, 'approved', new Date().toISOString()]],
             },
           });
