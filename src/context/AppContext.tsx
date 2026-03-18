@@ -197,6 +197,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.from('app_settings').upsert({ key: 'spreadsheet_id', value: id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   }, []);
 
+  const setSlotsVisible = useCallback(async (visible: boolean) => {
+    setSlotsVisibleLocal(visible);
+    await supabase.from('app_settings').upsert({ key: 'slots_visible', value: String(visible), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  }, []);
+
   const rejectRequest = useCallback(async (id: string) => {
     await supabase.from('lunch_requests').update({ status: 'rejected' }).eq('id', id);
   }, []);
