@@ -97,7 +97,7 @@ async function ensureSheetExists(spreadsheetId: string, sheetName: string, acces
 async function generateScheduleView(spreadsheetId: string, accessToken: string) {
   // 1. GET RAW DATA
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/RAW_DATA!A:F`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent('RAW_DATA')}!A:F`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
