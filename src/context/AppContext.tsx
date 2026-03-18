@@ -19,6 +19,8 @@ interface AppState {
   loading: boolean;
   spreadsheetId: string;
   setSpreadsheetId: (id: string) => Promise<void>;
+  slotsVisible: boolean;
+  setSlotsVisible: (visible: boolean) => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
