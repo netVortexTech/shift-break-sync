@@ -12,7 +12,7 @@ import { UtensilsCrossed, CalendarCheck, Send, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function EmployeePage() {
-  const { employees, activeShift, addRequest, requests } = useApp();
+  const { employees, activeShift, addRequest, requests, slotsVisible } = useApp();
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
   const today = new Date().toISOString().split('T')[0];
