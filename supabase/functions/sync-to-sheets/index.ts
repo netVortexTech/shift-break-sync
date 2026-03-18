@@ -97,7 +97,7 @@ async function ensureSheetExists(spreadsheetId: string, sheetName: string, acces
 async function generateScheduleView(spreadsheetId: string, accessToken: string) {
   // 1. GET RAW DATA
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/RAW_DATA!A:F`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent('RAW_DATA')}!A:F`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
@@ -220,8 +220,28 @@ Deno.serve(async (req) => {
       throw new Error('rows array is required and must not be empty');
     }
 
+    // Ensure RAW_DATA sheet exists with headers
+    await ensureSheetExists(spreadsheetId, 'RAW_DATA', accessToken);
+
+    // Check if RAW_DATA has headers, if not add them
+    const headerCheck = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent('RAW_DATA')}!A1:F1`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const headerData = await headerCheck.json();
+    if (!headerData.values || headerData.values.length === 0) {
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent('RAW_DATA')}!A1:F1?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ values: [['Date', 'Shift', 'Employee', 'Time', 'Status', 'Timestamp']] }),
+        }
+      );
+    }
+
     // Append rows to RAW_DATA
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/RAW_DATA!A:F:append?valueInputOption=USER_ENTERED`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent('RAW_DATA')}!A:F:append?valueInputOption=USER_ENTERED`;
 
     const response = await fetch(url, {
       method: 'POST',
