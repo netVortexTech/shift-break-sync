@@ -240,6 +240,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       employees, addEmployee, updateEmployee, deleteEmployee,
       loading,
       spreadsheetId, setSpreadsheetId,
+      slotsVisible, setSlotsVisible,
     }}>
       {children}
     </AppContext.Provider>
