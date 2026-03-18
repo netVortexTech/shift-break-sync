@@ -63,11 +63,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data) setSpreadsheetIdLocal(data.value);
     });
 
+    supabase.from('app_settings').select('value').eq('key', 'slots_visible').single().then(({ data }) => {
+      if (data) setSlotsVisibleLocal(data.value === 'true');
+    });
+
     const channel = supabase.channel('settings-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload) => {
         const row = payload.new as any;
         if (row?.key === 'active_shift') {
           setActiveShiftLocal(row.value as ShiftName);
+        }
+        if (row?.key === 'slots_visible') {
+          setSlotsVisibleLocal(row.value === 'true');
         }
       })
       .subscribe();
