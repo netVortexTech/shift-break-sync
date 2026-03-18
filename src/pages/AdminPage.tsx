@@ -14,7 +14,7 @@ import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, File
 import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
-  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove } = useApp();
+  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove, slotsVisible, setSlotsVisible } = useApp();
   const { signOut } = useAuth();
   const [sheetInput, setSheetInput] = useState(spreadsheetId);
 
