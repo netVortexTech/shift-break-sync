@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut, CheckCheck, Users } from 'lucide-react';
+import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut, CheckCheck, Users, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function AdminPage() {
