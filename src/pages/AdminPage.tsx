@@ -6,6 +6,7 @@ import { ScheduleView } from '@/components/ScheduleView';
 import { EmployeeManager } from '@/components/EmployeeManager';
 import { SHIFTS } from '@/lib/shifts';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
