@@ -19,6 +19,8 @@ interface AppState {
   loading: boolean;
   spreadsheetId: string;
   setSpreadsheetId: (id: string) => Promise<void>;
+  slotsVisible: boolean;
+  setSlotsVisible: (visible: boolean) => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -29,6 +31,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [employees, setEmployees] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [spreadsheetId, setSpreadsheetIdLocal] = useState('');
+  const [slotsVisible, setSlotsVisibleLocal] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -60,11 +63,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (data) setSpreadsheetIdLocal(data.value);
     });
 
+    supabase.from('app_settings').select('value').eq('key', 'slots_visible').single().then(({ data }) => {
+      if (data) setSlotsVisibleLocal(data.value === 'true');
+    });
+
     const channel = supabase.channel('settings-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload) => {
         const row = payload.new as any;
         if (row?.key === 'active_shift') {
           setActiveShiftLocal(row.value as ShiftName);
+        }
+        if (row?.key === 'slots_visible') {
+          setSlotsVisibleLocal(row.value === 'true');
         }
       })
       .subscribe();
@@ -187,6 +197,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.from('app_settings').upsert({ key: 'spreadsheet_id', value: id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   }, []);
 
+  const setSlotsVisible = useCallback(async (visible: boolean) => {
+    setSlotsVisibleLocal(visible);
+    await supabase.from('app_settings').upsert({ key: 'slots_visible', value: String(visible), updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  }, []);
+
   const rejectRequest = useCallback(async (id: string) => {
     await supabase.from('lunch_requests').update({ status: 'rejected' }).eq('id', id);
   }, []);
@@ -225,6 +240,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       employees, addEmployee, updateEmployee, deleteEmployee,
       loading,
       spreadsheetId, setSpreadsheetId,
+      slotsVisible, setSlotsVisible,
     }}>
       {children}
     </AppContext.Provider>
