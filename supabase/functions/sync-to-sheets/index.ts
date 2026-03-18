@@ -67,31 +67,33 @@ function normalizeShift(raw: string): string {
   return '';
 }
 
-async function ensureSheetExists(spreadsheetId: string, sheetName: string, accessToken: string) {
-  // Check if sheet exists
+async function getSheetId(spreadsheetId: string, sheetName: string, accessToken: string): Promise<number | null> {
   const metaRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   const meta = await metaRes.json();
-  const sheets = (meta.sheets || []).map((s: any) => s.properties.title);
+  const sheet = (meta.sheets || []).find((s: any) => s.properties.title === sheetName);
+  return sheet ? sheet.properties.sheetId : null;
+}
 
-  if (!sheets.includes(sheetName)) {
-    // Create the sheet
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          requests: [{ addSheet: { properties: { title: sheetName } } }],
-        }),
-      }
-    );
-  }
+async function ensureSheetExists(spreadsheetId: string, sheetName: string, accessToken: string) {
+  const existingId = await getSheetId(spreadsheetId, sheetName, accessToken);
+  if (existingId !== null) return;
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        requests: [{ addSheet: { properties: { title: sheetName } } }],
+      }),
+    }
+  );
 }
 
 async function generateScheduleView(spreadsheetId: string, accessToken: string) {
@@ -137,42 +139,52 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     grouped[shift][time].push(name);
   }
 
-  // 3. FORMAT each shift section
-  function formatShift(title: string, shiftData: Record<string, string[]>) {
+  // 3. FORMAT each shift section — track row positions for styling
+  interface ShiftSection { titleRow: number; headerRow: number; dataStartRow: number; dataEndRow: number; shift: string; }
+  const sections: ShiftSection[] = [];
+  let currentRow = 0;
+
+  function formatShift(title: string, shiftKey: string, shiftData: Record<string, string[]>) {
     const output: string[][] = [];
+    const titleRow = currentRow;
     output.push([title]);
+    currentRow++;
+    const headerRow = currentRow;
     output.push(['Time Slot', 'Agent 1', 'Agent 2', 'Agent 3']);
+    currentRow++;
+    const dataStartRow = currentRow;
 
     const sortedTimes = Object.keys(shiftData).sort();
     for (const time of sortedTimes) {
       const agents = shiftData[time];
       output.push([time, agents[0] || '', agents[1] || '', agents[2] || '']);
+      currentRow++;
     }
+    const dataEndRow = currentRow;
 
     output.push(['']); // spacer row
+    currentRow++;
+
+    sections.push({ titleRow, headerRow, dataStartRow, dataEndRow, shift: shiftKey });
     return output;
   }
 
   const finalData = [
-    ...formatShift('Morning Shift', grouped.morning),
-    ...formatShift('Afternoon Shift', grouped.afternoon),
-    ...formatShift('Night Shift', grouped.night),
+    ...formatShift('Morning Shift', 'morning', grouped.morning),
+    ...formatShift('Afternoon Shift', 'afternoon', grouped.afternoon),
+    ...formatShift('Night Shift', 'night', grouped.night),
   ];
 
   // 4. WRITE to today's formatted sheet
   const sheetName = getTodaySheetName();
   await ensureSheetExists(spreadsheetId, sheetName, accessToken);
 
-  // Clear the sheet first, then write
   const encodedSheet = encodeURIComponent(sheetName);
 
   // Clear existing content
   await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:Z:clear`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
+    { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
   // Write new data
@@ -180,10 +192,7 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A1?valueInputOption=RAW`,
     {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ values: finalData }),
     }
   );
@@ -191,8 +200,114 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
   if (!writeRes.ok) {
     const err = await writeRes.text();
     console.error(`Failed to write schedule to "${sheetName}":`, err);
+    return;
+  }
+
+  console.log(`Schedule view written to "${sheetName}" sheet`);
+
+  // 5. APPLY FORMATTING
+  const sheetId = await getSheetId(spreadsheetId, sheetName, accessToken);
+  if (sheetId === null) {
+    console.error('Could not find sheetId for formatting');
+    return;
+  }
+
+  const c = (r: number, g: number, b: number) => ({ red: r, green: g, blue: b });
+
+  // Color palette
+  const shiftColors: Record<string, { title: ReturnType<typeof c>; headerBg: ReturnType<typeof c>; dataBg: ReturnType<typeof c>; timeBg: ReturnType<typeof c> }> = {
+    morning: {
+      title: c(1, 0.84, 0.4),       // warm golden
+      headerBg: c(0.98, 0.93, 0.75), // soft cream
+      dataBg: c(1, 0.97, 0.88),      // light peach
+      timeBg: c(0.96, 0.88, 0.65),   // amber tint
+    },
+    afternoon: {
+      title: c(0.36, 0.72, 0.82),    // teal
+      headerBg: c(0.78, 0.92, 0.96), // light sky
+      dataBg: c(0.9, 0.96, 0.98),    // ice blue
+      timeBg: c(0.65, 0.85, 0.92),   // soft teal
+    },
+    night: {
+      title: c(0.47, 0.35, 0.75),    // purple
+      headerBg: c(0.82, 0.78, 0.94), // lavender
+      dataBg: c(0.92, 0.9, 0.97),    // soft lilac
+      timeBg: c(0.72, 0.65, 0.88),   // muted violet
+    },
+  };
+
+  const formatRequests: any[] = [];
+
+  const cellFormat = (startRow: number, endRow: number, startCol: number, endCol: number, bgColor: ReturnType<typeof c>, bold = false, fontSize = 10, textColor?: ReturnType<typeof c>) => ({
+    repeatCell: {
+      range: { sheetId, startRowIndex: startRow, endRowIndex: endRow, startColumnIndex: startCol, endColumnIndex: endCol },
+      cell: {
+        userEnteredFormat: {
+          backgroundColor: bgColor,
+          textFormat: { bold, fontSize, foregroundColor: textColor || c(0.1, 0.1, 0.1) },
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE',
+          borders: {
+            top: { style: 'SOLID', color: c(0.8, 0.8, 0.8) },
+            bottom: { style: 'SOLID', color: c(0.8, 0.8, 0.8) },
+            left: { style: 'SOLID', color: c(0.8, 0.8, 0.8) },
+            right: { style: 'SOLID', color: c(0.8, 0.8, 0.8) },
+          },
+        },
+      },
+      fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,borders)',
+    },
+  });
+
+  for (const section of sections) {
+    const colors = shiftColors[section.shift];
+    if (!colors) continue;
+
+    // Shift title row — bold, large, shift color bg, white text
+    formatRequests.push(cellFormat(section.titleRow, section.titleRow + 1, 0, 4, colors.title, true, 14, c(1, 1, 1)));
+    // Merge title across columns
+    formatRequests.push({ mergeCells: { range: { sheetId, startRowIndex: section.titleRow, endRowIndex: section.titleRow + 1, startColumnIndex: 0, endColumnIndex: 4 }, mergeType: 'MERGE_ALL' } });
+
+    // Column header row (Time Slot, Agent 1-3) — bold, header bg
+    formatRequests.push(cellFormat(section.headerRow, section.headerRow + 1, 0, 4, colors.headerBg, true, 11));
+
+    if (section.dataEndRow > section.dataStartRow) {
+      // Time slot column (col A) — distinct time bg
+      formatRequests.push(cellFormat(section.dataStartRow, section.dataEndRow, 0, 1, colors.timeBg, true, 10));
+      // Agent columns (cols B-D) — light data bg
+      formatRequests.push(cellFormat(section.dataStartRow, section.dataEndRow, 1, 4, colors.dataBg, false, 10));
+    }
+  }
+
+  // Auto-resize columns
+  formatRequests.push({
+    autoResizeDimensions: {
+      dimensions: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 4 },
+    },
+  });
+  // Set minimum column widths
+  formatRequests.push({
+    updateDimensionProperties: {
+      range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 4 },
+      properties: { pixelSize: 160 },
+      fields: 'pixelSize',
+    },
+  });
+
+  const fmtRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ requests: formatRequests }),
+    }
+  );
+
+  if (!fmtRes.ok) {
+    const err = await fmtRes.text();
+    console.error('Failed to format sheet:', err);
   } else {
-    console.log(`Schedule view written to "${sheetName}" sheet`);
+    console.log(`Sheet "${sheetName}" formatted successfully`);
   }
 }
 
