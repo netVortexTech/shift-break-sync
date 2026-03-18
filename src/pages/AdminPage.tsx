@@ -86,9 +86,22 @@ export default function AdminPage() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Shift Control */}
+        {/* Shift Control & Slot Visibility */}
         <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
-          <ShiftSelector />
+          <div className="flex items-center gap-4">
+            <ShiftSelector />
+            <div className="flex items-center gap-2 bg-card border rounded-xl px-4 py-2">
+              {slotsVisible ? <Eye className="w-4 h-4 text-slot-available" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+              <span className="text-sm font-medium">Slots Visible</span>
+              <Switch
+                checked={slotsVisible}
+                onCheckedChange={(checked) => {
+                  setSlotsVisible(checked);
+                  toast.success(checked ? 'Slots are now visible to employees' : 'Slots are now hidden from employees');
+                }}
+              />
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={handleBulkApprove} className="gap-2" disabled={pendingCount === 0}>
               <CheckCheck className="w-4 h-4" />

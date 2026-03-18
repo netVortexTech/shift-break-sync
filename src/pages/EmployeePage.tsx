@@ -98,13 +98,27 @@ export default function EmployeePage() {
                 </div>
               )}
 
-              <div className="mb-5">
-                <label className="block text-sm font-medium text-muted-foreground mb-3">Available Slots</label>
-                <SlotGrid
-                  onSelect={(range) => setSelectedSlot(range)}
-                  disabled={!selectedEmployee || !!hasExisting}
-                />
-              </div>
+              {slotsVisible ? (
+                <div className="mb-5">
+                  <label className="block text-sm font-medium text-muted-foreground mb-3">Available Slots</label>
+                  <SlotGrid
+                    onSelect={(range) => setSelectedSlot(range)}
+                    disabled={!selectedEmployee || !!hasExisting}
+                  />
+                </div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mb-5 flex flex-col items-center justify-center py-10 px-4 rounded-xl border-2 border-dashed border-muted-foreground/20 bg-muted/30"
+                >
+                  <EyeOff className="w-8 h-8 text-muted-foreground/50 mb-3" />
+                  <p className="font-heading font-semibold text-foreground mb-1">Slots Not Available Yet</p>
+                  <p className="text-sm text-muted-foreground text-center">
+                    Your supervisor hasn't opened the slots for booking yet. Please wait — they'll appear here automatically.
+                  </p>
+                </motion.div>
+              )}
 
               {selectedSlot && (
                 <motion.div
