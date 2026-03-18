@@ -67,31 +67,33 @@ function normalizeShift(raw: string): string {
   return '';
 }
 
-async function ensureSheetExists(spreadsheetId: string, sheetName: string, accessToken: string) {
-  // Check if sheet exists
+async function getSheetId(spreadsheetId: string, sheetName: string, accessToken: string): Promise<number | null> {
   const metaRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   const meta = await metaRes.json();
-  const sheets = (meta.sheets || []).map((s: any) => s.properties.title);
+  const sheet = (meta.sheets || []).find((s: any) => s.properties.title === sheetName);
+  return sheet ? sheet.properties.sheetId : null;
+}
 
-  if (!sheets.includes(sheetName)) {
-    // Create the sheet
-    await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          requests: [{ addSheet: { properties: { title: sheetName } } }],
-        }),
-      }
-    );
-  }
+async function ensureSheetExists(spreadsheetId: string, sheetName: string, accessToken: string) {
+  const existingId = await getSheetId(spreadsheetId, sheetName, accessToken);
+  if (existingId !== null) return;
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        requests: [{ addSheet: { properties: { title: sheetName } } }],
+      }),
+    }
+  );
 }
 
 async function generateScheduleView(spreadsheetId: string, accessToken: string) {
