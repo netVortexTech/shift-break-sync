@@ -3,7 +3,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Create a JWT for Google Service Account auth
 async function getAccessToken(serviceAccount: { client_email: string; private_key: string }) {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
@@ -16,10 +15,8 @@ async function getAccessToken(serviceAccount: { client_email: string; private_ke
   };
 
   const encode = (obj: unknown) => btoa(JSON.stringify(obj)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-
   const unsignedToken = `${encode(header)}.${encode(payload)}`;
 
-  // Import the private key
   const pemContents = serviceAccount.private_key
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
@@ -27,16 +24,13 @@ async function getAccessToken(serviceAccount: { client_email: string; private_ke
   const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
 
   const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
-    binaryKey,
+    'pkcs8', binaryKey,
     { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign']
+    false, ['sign']
   );
 
   const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    cryptoKey,
+    'RSASSA-PKCS1-v1_5', cryptoKey,
     new TextEncoder().encode(unsignedToken)
   );
 
@@ -45,7 +39,6 @@ async function getAccessToken(serviceAccount: { client_email: string; private_ke
 
   const jwt = `${unsignedToken}.${signatureB64}`;
 
-  // Exchange JWT for access token
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -59,93 +52,148 @@ async function getAccessToken(serviceAccount: { client_email: string; private_ke
   return tokenData.access_token as string;
 }
 
+function getTodaySheetName(): string {
+  const now = new Date();
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  return `${months[now.getMonth()]} ${now.getDate()}`;
+}
+
+function normalizeShift(raw: string): string {
+  const lower = (raw || '').toLowerCase().trim();
+  if (lower === 'morning' || lower.includes('morning')) return 'morning';
+  if (lower === 'afternoon' || lower.includes('afternoon')) return 'afternoon';
+  if (lower === 'night' || lower.includes('night')) return 'night';
+  return '';
+}
+
+async function ensureSheetExists(spreadsheetId: string, sheetName: string, accessToken: string) {
+  // Check if sheet exists
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const meta = await metaRes.json();
+  const sheets = (meta.sheets || []).map((s: any) => s.properties.title);
+
+  if (!sheets.includes(sheetName)) {
+    // Create the sheet
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          requests: [{ addSheet: { properties: { title: sheetName } } }],
+        }),
+      }
+    );
+  }
+}
+
 async function generateScheduleView(spreadsheetId: string, accessToken: string) {
   // 1. GET RAW DATA
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/RAW_DATA!A:F`,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    }
+    { headers: { Authorization: `Bearer ${accessToken}` } }
   );
 
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Failed to read RAW_DATA:', err);
+    return;
+  }
+
   const data = await res.json();
-  const rows = data.values || [];
+  const rows: string[][] = data.values || [];
+  const records = rows.slice(1); // skip header
 
-  const records = rows.slice(1); // remove header
+  if (records.length === 0) {
+    console.log('No records found in RAW_DATA');
+    return;
+  }
 
-  const grouped: any = {
+  // 2. GROUP by shift and time
+  const grouped: Record<string, Record<string, string[]>> = {
     morning: {},
     afternoon: {},
     night: {},
   };
 
-  // 2. GROUP DATA
-  records.forEach((row: string[]) => {
-    const rawShift = row[1];
+  for (const row of records) {
+    const shift = normalizeShift(row[1]);
+    const name = row[2] || '';
+    const time = row[3] || '';
 
-    let shift = "";
-
-if (rawShift.toLowerCase().includes("morning")) {
-  shift = "morning";
-} else if (rawShift.toLowerCase().includes("afternoon")) {
-  shift = "afternoon";
-} else if (rawShift.toLowerCase().includes("night")) {
-  shift = "night";
-}
-    const name = row[2];
-    const time = row[3];
-
-    if (!grouped[shift]) return;
+    if (!shift || !name || !time) continue;
+    if (!grouped[shift]) continue;
 
     if (!grouped[shift][time]) {
       grouped[shift][time] = [];
     }
-
     grouped[shift][time].push(name);
-  });
+  }
 
-  // 3. FORMAT FUNCTION
-  function formatShift(title: string, shiftData: any) {
-    const output: any[] = [];
-
+  // 3. FORMAT each shift section
+  function formatShift(title: string, shiftData: Record<string, string[]>) {
+    const output: string[][] = [];
     output.push([title]);
-    output.push(["Time slot", "Agent 1", "Agent 2", "Agent 3"]);
+    output.push(['Time Slot', 'Agent 1', 'Agent 2', 'Agent 3']);
 
-    Object.keys(shiftData)
-      .sort()
-      .forEach((time) => {
-        const agents = shiftData[time];
+    const sortedTimes = Object.keys(shiftData).sort();
+    for (const time of sortedTimes) {
+      const agents = shiftData[time];
+      output.push([time, agents[0] || '', agents[1] || '', agents[2] || '']);
+    }
 
-        output.push([
-          time,
-          agents[0] || "",
-          agents[1] || "",
-          agents[2] || "",
-        ]);
-      });
-
-    output.push([""]);
+    output.push(['']); // spacer row
     return output;
   }
 
   const finalData = [
-    ...formatShift("Morning Shift", grouped.morning),
-    ...formatShift("Afternoon Shift", grouped.afternoon),
-    ...formatShift("Night Shift", grouped.night),
+    ...formatShift('Morning Shift', grouped.morning),
+    ...formatShift('Afternoon Shift', grouped.afternoon),
+    ...formatShift('Night Shift', grouped.night),
   ];
 
-  // 4. WRITE TO FORMATTED SHEET
+  // 4. WRITE to today's formatted sheet
+  const sheetName = getTodaySheetName();
+  await ensureSheetExists(spreadsheetId, sheetName, accessToken);
+
+  // Clear the sheet first, then write
+  const encodedSheet = encodeURIComponent(sheetName);
+
+  // Clear existing content
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/March 17!A1?valueInputOption=RAW`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:Z:clear`,
     {
-      method: "PUT",
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  // Write new data
+  const writeRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A1?valueInputOption=RAW`,
+    {
+      method: 'PUT',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ values: finalData }),
     }
   );
+
+  if (!writeRes.ok) {
+    const err = await writeRes.text();
+    console.error(`Failed to write schedule to "${sheetName}":`, err);
+  } else {
+    console.log(`Schedule view written to "${sheetName}" sheet`);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -172,25 +220,26 @@ Deno.serve(async (req) => {
       throw new Error('rows array is required and must not be empty');
     }
 
-    // Append rows to the sheet
+    // Append rows to RAW_DATA
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/RAW_DATA!A:F:append?valueInputOption=USER_ENTERED`;
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ values: rows }),
     });
 
     const data = await response.json();
 
-    await generateScheduleView(spreadsheetId, accessToken);
-    
     if (!response.ok) {
       throw new Error(`Google Sheets API error [${response.status}]: ${JSON.stringify(data)}`);
     }
+
+    // Generate formatted schedule view after successful append
+    await generateScheduleView(spreadsheetId, accessToken);
 
     return new Response(JSON.stringify({ success: true, updatedRows: data.updates?.updatedRows }), {
       status: 200,
