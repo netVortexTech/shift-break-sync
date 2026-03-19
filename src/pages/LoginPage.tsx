@@ -94,6 +94,15 @@ export default function LoginPage() {
             </button>
           </p>
         </form>
+
+        <div className="text-center mt-4">
+          <Button variant="ghost" size="sm" asChild className="gap-2 text-muted-foreground hover:text-foreground">
+            <Link to="/">
+              <Home className="w-4 h-4" />
+              Back to Employee Page
+            </Link>
+          </Button>
+        </div>
       </motion.div>
     </div>
   );
