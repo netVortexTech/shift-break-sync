@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, LogIn } from 'lucide-react';
+import { Shield, LogIn, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
   const { signIn, signUp } = useAuth();
