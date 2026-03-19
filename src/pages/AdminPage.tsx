@@ -63,18 +63,16 @@ export default function AdminPage() {
             </div>
             <div className="flex gap-2 flex-wrap">
               <Button
-                variant="outline"
                 size="sm"
-                className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10 whitespace-nowrap"
+                className="bg-header-foreground/15 border border-header-foreground/40 text-header-foreground hover:bg-header-foreground/25 whitespace-nowrap"
                 onClick={handleCopyLink}
               >
                 <LinkIcon className="w-4 h-4 mr-2" />
                 Copy Link
               </Button>
               <Button
-                variant="outline"
                 size="sm"
-                className="border-header-foreground/30 text-header-foreground hover:bg-header-foreground/10 whitespace-nowrap"
+                className="bg-header-foreground/15 border border-header-foreground/40 text-header-foreground hover:bg-header-foreground/25 whitespace-nowrap"
                 onClick={() => signOut()}
               >
                 <LogOut className="w-4 h-4 mr-2" />
