@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { SlotGrid } from '@/components/SlotGrid';
-import { ShiftSelector } from '@/components/ShiftSelector';
 import { ScheduleView } from '@/components/ScheduleView';
 import { SHIFTS } from '@/lib/shifts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,9 +59,12 @@ export default function EmployeePage() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-6">
-        {/* Shift display */}
+        {/* Active shift display (read-only) */}
         <div className="mb-6">
-          <ShiftSelector />
+          <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-primary-foreground shadow-md">
+            <CalendarCheck className="w-4 h-4" />
+            {SHIFTS[activeShift].label}
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
