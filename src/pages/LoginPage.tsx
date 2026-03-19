@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, LogIn } from 'lucide-react';
+import { Shield, LogIn, Home } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
   const { signIn, signUp } = useAuth();
@@ -93,6 +94,15 @@ export default function LoginPage() {
             </button>
           </p>
         </form>
+
+        <div className="text-center mt-4">
+          <Button variant="ghost" size="sm" asChild className="gap-2 text-muted-foreground hover:text-foreground">
+            <Link to="/">
+              <Home className="w-4 h-4" />
+              Back to Employee Page
+            </Link>
+          </Button>
+        </div>
       </motion.div>
     </div>
   );

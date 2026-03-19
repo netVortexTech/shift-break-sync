@@ -4,14 +4,16 @@ import { ShiftSelector } from '@/components/ShiftSelector';
 import { PendingRequests } from '@/components/PendingRequests';
 import { ScheduleView } from '@/components/ScheduleView';
 import { EmployeeManager } from '@/components/EmployeeManager';
+import { AdminManager } from '@/components/AdminManager';
 import { SHIFTS } from '@/lib/shifts';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut, CheckCheck, Users, Eye, EyeOff } from 'lucide-react';
+import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut, CheckCheck, Users, Eye, EyeOff, Home, ShieldCheck } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function AdminPage() {
   const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove, slotsVisible, setSlotsVisible } = useApp();
@@ -62,6 +64,16 @@ export default function AdminPage() {
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                asChild
+                className="bg-header-foreground/15 border border-header-foreground/40 text-header-foreground hover:bg-header-foreground/25 whitespace-nowrap"
+              >
+                <Link to="/">
+                  <Home className="w-4 h-4 mr-2" />
+                  Home
+                </Link>
+              </Button>
               <Button
                 size="sm"
                 className="bg-header-foreground/15 border border-header-foreground/40 text-header-foreground hover:bg-header-foreground/25 whitespace-nowrap"
@@ -183,7 +195,6 @@ export default function AdminPage() {
             <PendingRequests />
           </motion.div>
 
-          {/* Approved Schedule */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -197,6 +208,23 @@ export default function AdminPage() {
             <ScheduleView />
           </motion.div>
         </div>
+
+        {/* Admin Management */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="bg-card rounded-2xl border p-5 shadow-sm mb-6"
+        >
+          <h2 className="font-heading font-semibold text-lg mb-4 flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-primary" />
+            Manage Admins
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Approve or revoke admin access for registered users.
+          </p>
+          <AdminManager />
+        </motion.div>
 
         {/* Employee Management */}
         <motion.div
