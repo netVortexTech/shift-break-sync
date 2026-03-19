@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { SlotGrid } from '@/components/SlotGrid';
-import { ShiftSelector } from '@/components/ShiftSelector';
-import { ScheduleView } from '@/components/ScheduleView';
+import { SHIFTS } from '@/lib/shifts';
 import { SHIFTS } from '@/lib/shifts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
