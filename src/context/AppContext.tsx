@@ -21,6 +21,7 @@ interface AppState {
   setSpreadsheetId: (id: string) => Promise<void>;
   slotsVisible: boolean;
   setSlotsVisible: (visible: boolean) => Promise<void>;
+  regenerateSheet: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
