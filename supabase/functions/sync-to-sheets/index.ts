@@ -96,6 +96,27 @@ async function ensureSheetExists(spreadsheetId: string, sheetName: string, acces
   );
 }
 
+async function clearSheet(spreadsheetId: string, sheetName: string, accessToken: string) {
+  const sheetId = await getSheetId(spreadsheetId, sheetName, accessToken);
+  if (sheetId === null) return;
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({
+        requests: [{
+          updateCells: {
+            range: { sheetId, startRowIndex: 0, startColumnIndex: 0 },
+            fields: 'userEnteredValue,userEnteredFormat',
+          },
+        }],
+      }),
+    }
+  );
+}
+
 async function generateScheduleView(spreadsheetId: string, accessToken: string) {
   // 1. GET RAW DATA
   const res = await fetch(
@@ -118,6 +139,20 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     return;
   }
 
+  // Filter to today's date only
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  const todayRecords = records.filter(row => {
+    const rowDate = (row[0] || '').trim();
+    return rowDate === todayStr;
+  });
+
+  if (todayRecords.length === 0) {
+    console.log('No records found for today in RAW_DATA');
+    return;
+  }
+
   // 2. GROUP by shift and time
   const grouped: Record<string, Record<string, string[]>> = {
     morning: {},
@@ -125,7 +160,7 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     night: {},
   };
 
-  for (const row of records) {
+  for (const row of todayRecords) {
     const shift = normalizeShift(row[1]);
     const name = row[2] || '';
     const time = row[3] || '';
@@ -136,16 +171,25 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     if (!grouped[shift][time]) {
       grouped[shift][time] = [];
     }
-    grouped[shift][time].push(name);
+    // Avoid duplicate names in the same slot
+    if (!grouped[shift][time].includes(name)) {
+      grouped[shift][time].push(name);
+    }
   }
 
   // 3. FORMAT each shift section — track row positions for styling
   interface ShiftSection { titleRow: number; headerRow: number; dataStartRow: number; dataEndRow: number; shift: string; }
   const sections: ShiftSection[] = [];
   let currentRow = 0;
+  const SPACER_ROWS = 3; // visible gap between shifts
 
   function formatShift(title: string, shiftKey: string, shiftData: Record<string, string[]>) {
     const output: string[][] = [];
+    const sortedTimes = Object.keys(shiftData).sort();
+
+    // Skip entirely empty shifts
+    if (sortedTimes.length === 0) return output;
+
     const titleRow = currentRow;
     output.push([title]);
     currentRow++;
@@ -154,7 +198,6 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     currentRow++;
     const dataStartRow = currentRow;
 
-    const sortedTimes = Object.keys(shiftData).sort();
     for (const time of sortedTimes) {
       const agents = shiftData[time];
       output.push([time, agents[0] || '', agents[1] || '', agents[2] || '']);
@@ -162,8 +205,11 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     }
     const dataEndRow = currentRow;
 
-    output.push(['']); // spacer row
-    currentRow++;
+    // Add spacer rows for visual separation
+    for (let s = 0; s < SPACER_ROWS; s++) {
+      output.push(['']);
+      currentRow++;
+    }
 
     sections.push({ titleRow, headerRow, dataStartRow, dataEndRow, shift: shiftKey });
     return output;
@@ -175,17 +221,38 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     ...formatShift('Night Shift', 'night', grouped.night),
   ];
 
+  if (finalData.length === 0) {
+    console.log('No shift data to write');
+    return;
+  }
+
   // 4. WRITE to today's formatted sheet
   const sheetName = getTodaySheetName();
   await ensureSheetExists(spreadsheetId, sheetName, accessToken);
 
-  const encodedSheet = encodeURIComponent(sheetName);
+  // Clear existing content and formatting
+  await clearSheet(spreadsheetId, sheetName, accessToken);
 
-  // Clear existing content
-  await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:Z:clear`,
-    { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+  // Unmerge all cells first to avoid conflicts
+  const preSheetId = await getSheetId(spreadsheetId, sheetName, accessToken);
+  if (preSheetId !== null) {
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({
+          requests: [{
+            unmergeCells: {
+              range: { sheetId: preSheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 10 },
+            },
+          }],
+        }),
+      }
+    );
+  }
+
+  const encodedSheet = encodeURIComponent(sheetName);
 
   // Write new data
   const writeRes = await fetch(
@@ -217,22 +284,22 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
   // Color palette
   const shiftColors: Record<string, { title: ReturnType<typeof c>; headerBg: ReturnType<typeof c>; dataBg: ReturnType<typeof c>; timeBg: ReturnType<typeof c> }> = {
     morning: {
-      title: c(1, 0.84, 0.4),       // warm golden
-      headerBg: c(0.98, 0.93, 0.75), // soft cream
-      dataBg: c(1, 0.97, 0.88),      // light peach
-      timeBg: c(0.96, 0.88, 0.65),   // amber tint
+      title: c(1, 0.84, 0.4),
+      headerBg: c(0.98, 0.93, 0.75),
+      dataBg: c(1, 0.97, 0.88),
+      timeBg: c(0.96, 0.88, 0.65),
     },
     afternoon: {
-      title: c(0.36, 0.72, 0.82),    // teal
-      headerBg: c(0.78, 0.92, 0.96), // light sky
-      dataBg: c(0.9, 0.96, 0.98),    // ice blue
-      timeBg: c(0.65, 0.85, 0.92),   // soft teal
+      title: c(0.36, 0.72, 0.82),
+      headerBg: c(0.78, 0.92, 0.96),
+      dataBg: c(0.9, 0.96, 0.98),
+      timeBg: c(0.65, 0.85, 0.92),
     },
     night: {
-      title: c(0.47, 0.35, 0.75),    // purple
-      headerBg: c(0.82, 0.78, 0.94), // lavender
-      dataBg: c(0.92, 0.9, 0.97),    // soft lilac
-      timeBg: c(0.72, 0.65, 0.88),   // muted violet
+      title: c(0.47, 0.35, 0.75),
+      headerBg: c(0.82, 0.78, 0.94),
+      dataBg: c(0.92, 0.9, 0.97),
+      timeBg: c(0.72, 0.65, 0.88),
     },
   };
 
