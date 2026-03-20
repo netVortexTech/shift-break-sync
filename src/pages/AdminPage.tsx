@@ -209,7 +209,7 @@ export default function AdminPage() {
                   Paste the Spreadsheet ID to auto-sync approved requests. The sheet must be shared with the service account.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Spreadsheet ID (from the URL)"
@@ -227,6 +227,26 @@ export default function AdminPage() {
                     Save
                   </Button>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!spreadsheetId || regenerating}
+                  className="gap-1.5"
+                  onClick={async () => {
+                    setRegenerating(true);
+                    try {
+                      await regenerateSheet();
+                      toast.success('Google Sheet regenerated successfully!');
+                    } catch (e: any) {
+                      toast.error(e?.message || 'Failed to regenerate sheet');
+                    } finally {
+                      setRegenerating(false);
+                    }
+                  }}
+                >
+                  <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} />
+                  {regenerating ? 'Regenerating…' : 'Regenerate Sheet'}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
