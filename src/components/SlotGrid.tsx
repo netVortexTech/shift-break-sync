@@ -21,7 +21,7 @@ export function SlotGrid({ onSelect, disabled }: SlotGridProps) {
   };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3">
       {slots.map((slot, i) => {
         const range = formatSlotRange(slot);
         const count = getSlotCount(range);
