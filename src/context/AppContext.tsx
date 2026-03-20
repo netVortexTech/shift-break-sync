@@ -203,6 +203,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await supabase.from('app_settings').upsert({ key: 'slots_visible', value: String(visible), updated_at: new Date().toISOString() }, { onConflict: 'key' });
   }, []);
 
+  const regenerateSheet = useCallback(async () => {
+    if (!spreadsheetId) {
+      throw new Error('No spreadsheet ID configured');
+    }
+    const sheetId = getResolvedSheetId();
+    // Send all approved requests for today as rows to trigger regeneration
+    const approved = requests.filter(r => r.status === 'approved' && r.date === today);
+    const rows = approved.length > 0
+      ? approved.map(r => [r.date, r.shift, r.employeeName, r.lunchTime, 'approved', r.timestamp])
+      : [[today, 'morning', '_regenerate_', '00:00 – 00:30', 'approved', new Date().toISOString()]];
+    
+    const { error } = await supabase.functions.invoke('sync-to-sheets', {
+      body: { spreadsheetId: sheetId, rows },
+    });
+    if (error) throw error;
+  }, [spreadsheetId, getResolvedSheetId, requests, today]);
+
   const rejectRequest = useCallback(async (id: string) => {
     await supabase.from('lunch_requests').update({ status: 'rejected' }).eq('id', id);
   }, []);
