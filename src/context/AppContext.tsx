@@ -259,6 +259,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loading,
       spreadsheetId, setSpreadsheetId,
       slotsVisible, setSlotsVisible,
+      regenerateSheet,
     }}>
       {children}
     </AppContext.Provider>
