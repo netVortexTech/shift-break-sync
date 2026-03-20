@@ -18,9 +18,10 @@ import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AdminPage() {
-  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove, slotsVisible, setSlotsVisible } = useApp();
+  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove, slotsVisible, setSlotsVisible, regenerateSheet } = useApp();
   const { signOut } = useAuth();
   const [sheetInput, setSheetInput] = useState(spreadsheetId);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => { setSheetInput(spreadsheetId); }, [spreadsheetId]);
   const today = new Date().toISOString().split('T')[0];
