@@ -12,15 +12,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut, CheckCheck, Users, Eye, EyeOff, Home, ShieldCheck } from 'lucide-react';
+import { Shield, RotateCcw, ClipboardList, CalendarCheck, Link as LinkIcon, FileSpreadsheet, LogOut, CheckCheck, Users, Eye, EyeOff, Home, ShieldCheck, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AdminPage() {
-  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove, slotsVisible, setSlotsVisible } = useApp();
+  const { activeShift, resetSchedule, requests, spreadsheetId, setSpreadsheetId, bulkApprove, slotsVisible, setSlotsVisible, regenerateSheet } = useApp();
   const { signOut } = useAuth();
   const [sheetInput, setSheetInput] = useState(spreadsheetId);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => { setSheetInput(spreadsheetId); }, [spreadsheetId]);
   const today = new Date().toISOString().split('T')[0];
@@ -208,7 +209,7 @@ export default function AdminPage() {
                   Paste the Spreadsheet ID to auto-sync approved requests. The sheet must be shared with the service account.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Spreadsheet ID (from the URL)"
@@ -226,6 +227,26 @@ export default function AdminPage() {
                     Save
                   </Button>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!spreadsheetId || regenerating}
+                  className="gap-1.5"
+                  onClick={async () => {
+                    setRegenerating(true);
+                    try {
+                      await regenerateSheet();
+                      toast.success('Google Sheet regenerated successfully!');
+                    } catch (e: any) {
+                      toast.error(e?.message || 'Failed to regenerate sheet');
+                    } finally {
+                      setRegenerating(false);
+                    }
+                  }}
+                >
+                  <RefreshCw className={`w-4 h-4 ${regenerating ? 'animate-spin' : ''}`} />
+                  {regenerating ? 'Regenerating…' : 'Regenerate Sheet'}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
