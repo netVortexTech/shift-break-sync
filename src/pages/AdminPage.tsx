@@ -47,7 +47,7 @@ export default function AdminPage() {
   };
 
   const handleCopyLink = () => {
-    const url = 'https://shift-break-sync.vercel.app';
+    const url = 'https://lunch.netvortexdomain.online/';
     navigator.clipboard.writeText(url);
     toast.success('Employee link copied to clipboard!');
   };
