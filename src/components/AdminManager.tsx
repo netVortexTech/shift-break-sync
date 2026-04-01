@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
+import { ShieldCheck, ShieldX, Loader2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface UserWithRole {
