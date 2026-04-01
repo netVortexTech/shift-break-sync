@@ -73,6 +73,20 @@ export function AdminManager() {
     setActing(null);
   };
 
+  const deleteUser = async (userId: string) => {
+    if (userId === user?.id) {
+      toast.error("You can't delete yourself");
+      return;
+    }
+    setActing(userId);
+    // Remove any roles first, then the user will just disappear from the list on next auth cleanup
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    // Remove from the users list locally
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    toast.success('User removed from admin panel');
+    setActing(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
