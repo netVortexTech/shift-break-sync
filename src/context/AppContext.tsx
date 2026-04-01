@@ -141,13 +141,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addRequest = useCallback(async (employeeName: string, lunchTime: string) => {
-    await supabase.from('lunch_requests').insert({
+    const { error } = await supabase.from('lunch_requests').insert({
       employee_name: employeeName,
       shift: activeShift,
       lunch_time: lunchTime,
       status: 'pending',
       date: today,
     });
+    if (error) throw new Error(error.message);
   }, [activeShift, today]);
 
   const getResolvedSheetId = useCallback(() => {
