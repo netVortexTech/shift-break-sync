@@ -32,7 +32,7 @@ export default function EmployeePage() {
       r.status !== 'rejected'
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedEmployee || !selectedSlot) {
       toast.error('Please select your name and a time slot');
       return;
@@ -43,9 +43,18 @@ export default function EmployeePage() {
       return;
     }
 
-    addRequest(selectedEmployee, selectedSlot);
-    toast.success('Request submitted for approval!');
-    setSelectedSlot('');
+    try {
+      await addRequest(selectedEmployee, selectedSlot);
+      toast.success('Request submitted for approval!');
+      setSelectedSlot('');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.includes('full') || msg.includes('maximum')) {
+        toast.error('This slot is already full. Please choose another one.');
+      } else {
+        toast.error('Failed to submit request. Please try again.');
+      }
+    }
   };
 
   return (

@@ -346,17 +346,18 @@ async function generateScheduleView(spreadsheetId: string, accessToken: string) 
     }
   }
 
-  // Auto-resize columns
-  formatRequests.push({
-    autoResizeDimensions: {
-      dimensions: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 4 },
-    },
-  });
-  // Set minimum column widths
+  // Set column widths — Time Slot narrower, Agent columns wider for long names
   formatRequests.push({
     updateDimensionProperties: {
-      range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 4 },
-      properties: { pixelSize: 160 },
+      range: { sheetId, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+      properties: { pixelSize: 180 },
+      fields: 'pixelSize',
+    },
+  });
+  formatRequests.push({
+    updateDimensionProperties: {
+      range: { sheetId, dimension: 'COLUMNS', startIndex: 1, endIndex: 4 },
+      properties: { pixelSize: 250 },
       fields: 'pixelSize',
     },
   });
