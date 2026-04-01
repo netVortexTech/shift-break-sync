@@ -120,7 +120,7 @@ export default function EmployeePage() {
                     }}
                   />
 
-                  {search && (
+                  {search && !selectedEmployee && (
                     <div className="absolute z-50 w-full mt-1 bg-card border rounded-md shadow-md max-h-48 overflow-y-auto">
                       {filteredEmployees.length > 0 ? (
                         filteredEmployees.map(name => (
