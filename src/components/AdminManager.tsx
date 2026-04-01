@@ -115,27 +115,40 @@ export function AdminManager() {
           <div className="flex-shrink-0 ml-3">
             {u.id === user?.id ? (
               <span className="text-xs text-muted-foreground italic">You</span>
-            ) : u.isAdmin ? (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1.5"
-                disabled={acting === u.id}
-                onClick={() => revokeAdmin(u.id)}
-              >
-                {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldX className="w-3.5 h-3.5" />}
-                Revoke
-              </Button>
             ) : (
-              <Button
-                size="sm"
-                className="gap-1.5"
-                disabled={acting === u.id}
-                onClick={() => grantAdmin(u.id)}
-              >
-                {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                Approve
-              </Button>
+              <div className="flex items-center gap-1.5">
+                {u.isAdmin ? (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5"
+                    disabled={acting === u.id}
+                    onClick={() => revokeAdmin(u.id)}
+                  >
+                    {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldX className="w-3.5 h-3.5" />}
+                    Revoke
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={acting === u.id}
+                    onClick={() => grantAdmin(u.id)}
+                  >
+                    {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    Approve
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
+                  disabled={acting === u.id}
+                  onClick={() => deleteUser(u.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             )}
           </div>
         </div>
