@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { ShieldCheck, ShieldX, Loader2 } from 'lucide-react';
+import { ShieldCheck, ShieldX, Loader2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface UserWithRole {
@@ -73,6 +73,20 @@ export function AdminManager() {
     setActing(null);
   };
 
+  const deleteUser = async (userId: string) => {
+    if (userId === user?.id) {
+      toast.error("You can't delete yourself");
+      return;
+    }
+    setActing(userId);
+    // Remove any roles first, then the user will just disappear from the list on next auth cleanup
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    // Remove from the users list locally
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    toast.success('User removed from admin panel');
+    setActing(null);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -101,27 +115,40 @@ export function AdminManager() {
           <div className="flex-shrink-0 ml-3">
             {u.id === user?.id ? (
               <span className="text-xs text-muted-foreground italic">You</span>
-            ) : u.isAdmin ? (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1.5"
-                disabled={acting === u.id}
-                onClick={() => revokeAdmin(u.id)}
-              >
-                {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldX className="w-3.5 h-3.5" />}
-                Revoke
-              </Button>
             ) : (
-              <Button
-                size="sm"
-                className="gap-1.5"
-                disabled={acting === u.id}
-                onClick={() => grantAdmin(u.id)}
-              >
-                {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                Approve
-              </Button>
+              <div className="flex items-center gap-1.5">
+                {u.isAdmin ? (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5"
+                    disabled={acting === u.id}
+                    onClick={() => revokeAdmin(u.id)}
+                  >
+                    {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldX className="w-3.5 h-3.5" />}
+                    Revoke
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={acting === u.id}
+                    onClick={() => grantAdmin(u.id)}
+                  >
+                    {acting === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    Approve
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-destructive/50 text-destructive hover:bg-destructive/10"
+                  disabled={acting === u.id}
+                  onClick={() => deleteUser(u.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             )}
           </div>
         </div>
