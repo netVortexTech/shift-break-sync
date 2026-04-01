@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -18,9 +18,7 @@ export function AdminManager() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    // Get all users via security definer function
+  const fetchUsers = useCallback(async () => {
     const { data: allUsers, error } = await supabase.rpc('get_all_users');
     if (error) {
       toast.error('Failed to load users');
@@ -28,7 +26,6 @@ export function AdminManager() {
       return;
     }
 
-    // Get all admin roles
     const { data: roles } = await supabase.from('user_roles').select('user_id');
     const adminIds = new Set((roles || []).map(r => r.user_id));
 
@@ -41,9 +38,20 @@ export function AdminManager() {
       }))
     );
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    fetchUsers();
+
+    // Real-time subscription for user_roles changes
+    const channel = supabase.channel('admin-roles-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => {
+        fetchUsers();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchUsers]);
 
   const grantAdmin = async (userId: string) => {
     setActing(userId);
@@ -52,7 +60,8 @@ export function AdminManager() {
       toast.error('Failed to grant admin');
     } else {
       toast.success('Admin access granted');
-      await fetchUsers();
+      // Optimistic update
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isAdmin: true } : u));
     }
     setActing(null);
   };
@@ -68,7 +77,7 @@ export function AdminManager() {
       toast.error('Failed to revoke admin');
     } else {
       toast.success('Admin access revoked');
-      await fetchUsers();
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, isAdmin: false } : u));
     }
     setActing(null);
   };
@@ -79,11 +88,13 @@ export function AdminManager() {
       return;
     }
     setActing(userId);
-    // Remove any roles first, then the user will just disappear from the list on next auth cleanup
-    await supabase.from('user_roles').delete().eq('user_id', userId);
-    // Remove from the users list locally
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    toast.success('User removed from admin panel');
+    const { error } = await supabase.from('user_roles').delete().eq('user_id', userId);
+    if (error) {
+      toast.error('Failed to delete user');
+    } else {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      toast.success('User removed');
+    }
     setActing(null);
   };
 
